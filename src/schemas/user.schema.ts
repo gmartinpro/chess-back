@@ -23,7 +23,13 @@ export class User {
   currentGame: Game;
 
   @Prop()
+  currentSocketId: string;
+
+  @Prop()
   elo: number;
+
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Game' }] })
+  games: Game[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

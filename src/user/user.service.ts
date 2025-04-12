@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
@@ -10,16 +10,23 @@ export class UserService {
     this.logger = new Logger(UserService.name);
   }
 
-  async findOne(query: any): Promise<User | null> {
-    return await this.userModel.findOne(query).exec();
+  async findAndUpdatePlayerSocket(
+    email: string,
+    socketId: string,
+  ): Promise<User> {
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) {
+      throw new NotFoundException(
+        `Utilisateur avec l'email ${email} non trouvé`,
+      );
+    }
+
+    user.currentSocketId = socketId;
+    await user.save();
+    return user;
   }
 
-  async create(user: {
-    password: string;
-    gamertag: string;
-  }): Promise<User | null> {
-    this.logger.log('Creating user.');
-    const newUser = new this.userModel(user);
-    return await newUser.save();
+  getOpponent(players: User[], email: string): User | null {
+    return players.find((player) => player.email !== email) ?? null;
   }
 }

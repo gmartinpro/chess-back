@@ -1,70 +1,101 @@
-import { Injectable } from '@nestjs/common';
-import { IGame } from '../shared/interfaces/game.interface';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { EngineService } from '../engine/engine.service';
 import { IMove, IMoveRequest } from '../shared/interfaces/engine.interface';
 import { nanoid } from 'nanoid';
+import { InjectModel } from '@nestjs/mongoose';
+import { Game, GameDocument } from '../schemas/game.schema';
+import { Model } from 'mongoose';
+import { User, UserDocument } from '../schemas/user.schema';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class GameService {
-  private games = new Map<string, IGame>();
+  constructor(
+    @InjectModel(Game.name) private gameModel: Model<GameDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly engine: EngineService,
+    private readonly userService: UserService,
+  ) {}
 
-  constructor(private readonly engine: EngineService) {}
+  async createGame(email: string, socketId: string): Promise<Game> {
+    const user = await this.userService.findAndUpdatePlayerSocket(
+      email,
+      socketId,
+    );
 
-  createGame(hostId: string): IGame {
     const gameId = nanoid(6);
-    const game: IGame = {
+    const game = new this.gameModel({
       id: gameId,
-      players: [hostId],
+      players: [user],
       status: 'pending',
       fen: this.engine.newGame(gameId),
-      currentPlayer: hostId,
-    };
+      currentPlayer: user,
+    });
 
-    this.games.set(gameId, game);
+    await game.save();
 
     return game;
   }
 
-  joinGame(gameId: string, playerId: string): IGame | null {
-    const game = this.games.get(gameId);
-    if (!game || game.players.length >= 2) {
-      return null;
-      // Error handling: game not found or already full
+  async getGame(gameId: string): Promise<GameDocument | null> {
+    return this.gameModel.findOne({ id: gameId }).exec();
+  }
+
+  async joinGame(
+    gameId: string,
+    email: string,
+    socketId: string,
+  ): Promise<GameDocument | null> {
+    const [user, game] = await Promise.all([
+      this.userService.findAndUpdatePlayerSocket(email, socketId),
+      this.getGameWithPlayers(gameId),
+    ]);
+    if (!game || !this.canJoinGame(game)) {
+      throw new NotFoundException(
+        `Game with id ${gameId} not found or already full : ${game?.players.length ?? 'no'} player(s) inside`,
+      );
+    }
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} not found`);
     }
 
-    game.players.push(playerId);
+    game.players.push(user);
     game.status = 'playing';
-
-    return game;
+    return game.save();
   }
 
-  makeMove(gameId: string, move: IMoveRequest): IMove | null {
-    const game = this.games.get(gameId);
-    if (!game) {
+  makeMove(
+    game: GameDocument,
+    move: IMoveRequest,
+    opponent: User,
+  ): { move: IMove; game: GameDocument } | null {
+    const gameToUpdate = game;
+    if (!gameToUpdate) {
       return null;
     }
-    return this.engine.makeMove(gameId, move);
+
+    const madeMove = this.engine.makeMove(gameToUpdate.id, move);
+
+    if (madeMove.valid && madeMove.details) {
+      gameToUpdate.fen = madeMove.details.fen;
+      gameToUpdate.status = madeMove.details.status;
+      gameToUpdate.currentPlayer = opponent;
+    }
+    return { move: madeMove, game: gameToUpdate };
   }
 
-  undoIllegalMove(gameId: string): void {
-    const game = this.games.get(gameId);
+  async undoIllegalMove(gameId: string): Promise<void> {
+    const game = await this.getGame(gameId);
     if (game) {
       this.engine.undoIllegalMove(gameId);
     }
   }
 
-  getGame(gameId: string): IGame | null {
-    return this.games.get(gameId) || null;
+  async getGameWithPlayers(gameId: string): Promise<GameDocument | null> {
+    return this.gameModel.findOne({ id: gameId }).populate('players').exec();
   }
 
-  getOpponent(gameId: string, playerId: string): string | null {
-    const game = this.games.get(gameId);
-
-    if (!game) {
-      return null;
-    }
-
-    const opponent = game.players.find((player) => player !== playerId);
-    return opponent ?? null;
+  private canJoinGame(game: GameDocument): boolean {
+    return game.players.length < 2 && game.status === 'pending';
   }
 }
