@@ -1,18 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { Chess } from 'chess.js';
-import { IMoveRequest, IMove } from '../shared/interfaces/engine.interface';
-import { GameStatus } from '../shared/types/game.types';
+import { IMoveRequest, IMove } from '../../shared/interfaces/engine.interface';
+import { GameStatus } from '../../shared/types/game.types';
 
 @Injectable()
 export class EngineService {
   private boards = new Map<string, Chess>();
 
+  /**
+   * Creates a new game and returns the initial FEN string.
+   * @param gameId The ID of the game.
+   */
   newGame(gameId: string): string {
     const chess = new Chess();
     this.boards.set(gameId, chess);
     return chess.fen();
   }
 
+  /**
+   * Makes a move in the game.
+   * @param gameId The ID of the game.
+   * @param moveRequest The move request containing the from and to positions.
+   */
   makeMove(gameId: string, moveRequest: IMoveRequest): IMove {
     try {
       const chess = this.boards.get(gameId);
@@ -40,6 +49,10 @@ export class EngineService {
     }
   }
 
+  /**
+   * Undoes the last move in the game.
+   * @param gameId The ID of the game.
+   */
   undoMove(gameId: string) {
     const chess = this.boards.get(gameId);
     if (chess) {
@@ -47,6 +60,10 @@ export class EngineService {
     }
   }
 
+  /**
+   * Gets the current status of the game.
+   * @param chess
+   */
   private getGameStatus(chess: Chess): GameStatus {
     if (chess.isCheckmate()) return 'checkmate';
     if (chess.isStalemate()) return 'stalemate';
@@ -54,6 +71,10 @@ export class EngineService {
     return 'playing';
   }
 
+  /**
+   * Checks if the game is over.
+   * @param status
+   */
   private isGameOver(status: GameStatus): boolean {
     return ['stalemate', 'draw', 'checkmate'].includes(status);
   }

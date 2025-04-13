@@ -1,4 +1,4 @@
-import { User, UserDocument } from '../schemas/user.schema';
+import { User, UserDocument } from '../../schemas/user.schema';
 import { UserService } from './user.service';
 
 export const UserServiceMock = {

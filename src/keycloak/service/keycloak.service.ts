@@ -26,6 +26,10 @@ export class KeycloakService {
     this.keycloak = new KeycloakConnect({}, keycloakConfig);
   }
 
+  /**
+   * Verifies the token with Keycloak.
+   * @param token The token to verify.
+   */
   async verify(token: Token): Promise<any> {
     try {
       const grant = await this.keycloak.grantManager.createGrant({

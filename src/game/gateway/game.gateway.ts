@@ -4,54 +4,85 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { GameService } from './game.service';
+import { GameService } from '../service/game.service';
 import { Socket } from 'socket.io';
-import { SocketMessages } from '../shared/enums/socket.messages.enum';
-import { UserService } from '../user/user.service';
-import { Roles, WsRoleGuard } from '../ws.role/ws.role.guard';
-import { UseGuards, UseInterceptors } from '@nestjs/common';
-import { GameEventService } from '../game.event/game.event.service';
-import { WsExceptionInterceptor } from '../ws.exception/ws.exception.interceptor';
+import { SocketMessages } from '../../shared/enums/socket.messages.enum';
+import { UserService } from '../../user/service/user.service';
+import { Roles, WsRoleGuard } from '../../ws.role/ws.role.guard';
+import { Logger, UseGuards, UseInterceptors } from '@nestjs/common';
+import { GameEventService } from '../../game.event/service/game.event.service';
+import { WsExceptionInterceptor } from '../../ws.exception/ws.exception.interceptor';
 import {
   GameNotFoundException,
   OpponentNotFoundException,
-} from '../exceptions/game.exception';
+} from '../exception/game.exception';
 
 @UseInterceptors(WsExceptionInterceptor)
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  transports: ['websocket', 'polling'],
+  transports: ['websocket'],
 })
 export class GameGateway {
+  private readonly logger = new Logger(GameGateway.name);
   constructor(
     private readonly gameService: GameService,
     private readonly userService: UserService,
     private readonly gameEvent: GameEventService,
   ) {}
 
+  /**
+   * Handles the connection of a client.
+   * @param client The socket client.
+   */
+  handleConnection(client: Socket) {
+    this.logger.log(`Client connected: ${client.id}`);
+  }
+
+  /**
+   * Handles the disconnection of a client.
+   * @param client The socket client.
+   */
+  handleDisconnect(client: Socket) {
+    this.logger.log(`Client déconnecté: ${client.id}`);
+  }
+
+  /**
+   * Handles the creation of a new game.
+   * @param client The socket client.
+   * @param email The email of the host.
+   */
+  @Roles('Host')
   @UseGuards(WsRoleGuard)
   @SubscribeMessage(SocketMessages.NEW_GAME)
-  @Roles('Host')
   async handleCreate(
     @ConnectedSocket() client: Socket,
     @MessageBody() email: string,
   ) {
-    console.log('here');
+    this.logger.log(
+      `Handle create from ${client.id}: ${JSON.stringify(email)}`,
+    );
     const game = await this.gameService.createGame(email, client.id);
-    console.log('here 2');
-    this.gameEvent.emitGameCreated(client, game);
+    await this.gameEvent.emitGameCreated(client, game);
   }
 
+  /**
+   * Handles the joining of a game.
+   * @param joinRequest The request containing the game ID and email.
+   * @param client The socket client.
+   */
   @Roles('Player')
   @SubscribeMessage(SocketMessages.JOIN_GAME)
   async handleJoin(
     @MessageBody() joinRequest: { gameId: string; email: string },
     @ConnectedSocket() client: Socket,
   ) {
+    this.logger.log(
+      `Handle join from ${client.id}: ${JSON.stringify(joinRequest.gameId)}`,
+    );
     const { gameId, email } = joinRequest;
 
     const game = await this.gameService.joinGame(gameId, email, client.id);
@@ -63,9 +94,14 @@ export class GameGateway {
     if (!opponentSocketId) {
       throw new OpponentNotFoundException();
     }
-    this.gameEvent.emitGameJoined(client, game, opponentSocketId, gameId);
+    await this.gameEvent.emitGameJoined(client, game, opponentSocketId, gameId);
   }
 
+  /**
+   * Handles the leaving of a game.
+   * @param leaveRequest The request containing the game ID and email.
+   * @param client The socket client.
+   */
   @Roles('Player')
   @SubscribeMessage(SocketMessages.LEAVE_GAME)
   async handleLeave(
@@ -85,9 +121,14 @@ export class GameGateway {
     }
     game.winner = opponent;
     await game.save();
-    this.gameEvent.emitLeave(client, opponent);
+    await this.gameEvent.emitLeave(client, opponent, gameId);
   }
 
+  /**
+   * Handles a move made by a player.
+   * @param moveRequest The request containing the game ID, move details, and email.
+   * @param client The socket client.
+   */
   @Roles('Player')
   @SubscribeMessage(SocketMessages.MAKE_MOVE)
   async handleMove(
@@ -117,7 +158,12 @@ export class GameGateway {
       await game.updateOne(madeMove.game).exec();
 
       if (madeMove.move.details.isGameOver) {
-        this.gameEvent.emitGameOver(client, madeMove.move.details, opponent);
+        await this.gameEvent.emitGameOver(
+          client,
+          { ...madeMove.move.details, winner: madeMove.game.winner },
+          opponent,
+          gameId,
+        );
         return;
       }
 

@@ -1,21 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { EngineService } from '../engine/engine.service';
+import { EngineService } from '../../engine/service/engine.service';
 import {
   IEndGameDetails,
   IMove,
   IMoveRequest,
   IValidMove,
-} from '../shared/interfaces/engine.interface';
+} from '../../shared/interfaces/engine.interface';
 import { nanoid } from 'nanoid';
 import { InjectModel } from '@nestjs/mongoose';
-import { Game, GameDocument } from '../schemas/game.schema';
+import { Game, GameDocument } from '../../schemas/game.schema';
 import { Model } from 'mongoose';
-import { UserService } from '../user/user.service';
-import { User } from '../schemas/user.schema';
+import { UserService } from '../../user/service/user.service';
+import { User } from '../../schemas/user.schema';
 import {
   GameNotFoundException,
   IllegalMoveException,
-} from '../exceptions/game.exception';
+} from '../exception/game.exception';
 
 @Injectable()
 export class GameService {
@@ -25,6 +25,11 @@ export class GameService {
     private readonly userService: UserService,
   ) {}
 
+  /**
+   * Creates a new game and adds the player to it.
+   * @param email The email of the host.
+   * @param socketId The socket ID of the host.
+   */
   async createGame(email: string, socketId: string): Promise<Game> {
     const user = await this.userService.findAndUpdatePlayerSocket(
       email,
@@ -43,10 +48,20 @@ export class GameService {
     return game;
   }
 
+  /**
+   * Retrieves a game by its ID.
+   * @param gameId The ID of the game.
+   */
   async getGame(gameId: string): Promise<GameDocument | null> {
     return this.gameModel.findOne({ id: gameId }).exec();
   }
 
+  /**
+   * Joins a game as a player.
+   * @param gameId The ID of the game to join.
+   * @param email The email of the player.
+   * @param socketId The socket ID of the player.
+   */
   async joinGame(
     gameId: string,
     email: string,
@@ -68,6 +83,13 @@ export class GameService {
     return game;
   }
 
+  /**
+   * Makes a move in the game.
+   * @param game The game object.
+   * @param move The move to be made.
+   * @param opponent The opponent user.
+   * @param email The email of the player making the move.
+   */
   makeMove(
     game: GameDocument,
     move: IMoveRequest,
@@ -95,6 +117,12 @@ export class GameService {
     };
   }
 
+  /**
+   * Builds the payload for updating the game state after a move.
+   * @param game The game object.
+   * @param move The move made.
+   * @param opponent The opponent user.
+   */
   buildUpdatePayload(
     game: GameDocument,
     move: IValidMove,
@@ -108,6 +136,12 @@ export class GameService {
     return gameToUpdate;
   }
 
+  /**
+   * Builds the payload for ending the game.
+   * @param game The game object.
+   * @param moveDetails The details of the move made.
+   * @param winnerEmail The email of the winner.
+   */
   buildEndPayload(
     game: GameDocument,
     moveDetails: IEndGameDetails,
@@ -124,18 +158,34 @@ export class GameService {
     return gameToUpdate;
   }
 
+  /**
+   * Retrieves a game with its players.
+   * @param gameId The ID of the game.
+   */
   async getGameWithPlayers(gameId: string): Promise<GameDocument | null> {
     return this.gameModel.findOne({ id: gameId }).populate('players').exec();
   }
 
+  /**
+   * Undoes the last move made in the game.
+   * @param game The game object.
+   */
   undoMove(game: Game): void {
     this.engine.undoMove(game.id);
   }
 
+  /**
+   * Checks if a move is legal.
+   * @param move The move to check.
+   */
   isLegalMove(move: IMove): move is IValidMove {
     return !!move.valid && !!move.details;
   }
 
+  /**
+   * Checks if a game can be joined.
+   * @param game The game object.
+   */
   private canJoinGame(game: GameDocument): boolean {
     return game.players.length < 2 && game.status === 'pending';
   }

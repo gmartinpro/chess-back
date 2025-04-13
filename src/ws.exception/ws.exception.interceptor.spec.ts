@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CallHandler, ExecutionContext, Logger } from '@nestjs/common';
 import { WsExceptionInterceptor } from './ws.exception.interceptor';
-import { GameEventService } from '../game.event/game.event.service';
+import { GameEventService } from '../game.event/service/game.event.service';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { Socket } from 'socket.io';
-import { GameEventServiceMock } from '../game.event/game.event.service.mock';
+import { GameEventServiceMock } from '../game.event/service/game.event.service.mock';
 
 describe('WsExceptionInterceptor', () => {
   let interceptor: WsExceptionInterceptor;

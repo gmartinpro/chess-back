@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EngineService } from './engine.service';
 import { Chess, Move } from 'chess.js';
-import { mockMove } from '../game/game.service.mock';
+import { mockMove } from '../../game/service/game.service.mock';
 
 jest.mock('chess.js', () => {
   return {

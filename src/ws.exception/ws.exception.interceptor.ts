@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable, catchError } from 'rxjs';
 import { Socket } from 'socket.io';
-import { GameEventService } from '../game.event/game.event.service';
+import { GameEventService } from '../game.event/service/game.event.service';
 
 @Injectable()
 export class WsExceptionInterceptor implements NestInterceptor {

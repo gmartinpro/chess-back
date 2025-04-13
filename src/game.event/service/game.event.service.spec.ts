@@ -1,11 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameEventService } from './game.event.service';
 import { Socket } from 'socket.io';
-import { User } from '../schemas/user.schema';
-import { SocketMessages } from '../shared/enums/socket.messages.enum';
-import { IMove, IValidMove } from '../shared/interfaces/engine.interface';
-import { mockGame, mockMove, mockMoveDetails } from '../game/game.service.mock';
-import { mockUser } from '../user/user.service.mock';
+import { User } from '../../schemas/user.schema';
+import { SocketMessages } from '../../shared/enums/socket.messages.enum';
+import { IMove, IValidMove } from '../../shared/interfaces/engine.interface';
+import {
+  mockGame,
+  mockMove,
+  mockMoveDetails,
+} from '../../game/service/game.service.mock';
+import { mockUser } from '../../user/service/user.service.mock';
 
 describe('GameEventService', () => {
   let service: GameEventService;
@@ -23,6 +27,8 @@ describe('GameEventService', () => {
       emit: jest.fn(),
       join: jest.fn(),
       to: jest.fn().mockReturnThis(),
+      leave: jest.fn(),
+      socketsLeave: jest.fn(),
     } as unknown as jest.Mocked<Socket>;
   });
 
@@ -31,10 +37,10 @@ describe('GameEventService', () => {
   });
 
   describe('emitGameCreated', () => {
-    it('should join room and emit game created event', () => {
+    it('should join room and emit game created event', async () => {
       const game = mockGame();
 
-      service.emitGameCreated(mockClient, game);
+      await service.emitGameCreated(mockClient, game);
 
       const joinSpy = jest.spyOn(mockClient, 'join');
       const emitSpy = jest.spyOn(mockClient, 'emit');
@@ -45,11 +51,11 @@ describe('GameEventService', () => {
   });
 
   describe('emitGameJoined', () => {
-    it('should join room and emit appropriate events', () => {
+    it('should join room and emit appropriate events', async () => {
       const game = mockGame();
       const opponentSocketId = 'socket123';
 
-      service.emitGameJoined(mockClient, game, opponentSocketId, game.id);
+      await service.emitGameJoined(mockClient, game, opponentSocketId, game.id);
 
       const toSpy = jest.spyOn(mockClient, 'to');
       const emitSpy = jest.spyOn(mockClient, 'emit');
@@ -92,11 +98,16 @@ describe('GameEventService', () => {
   });
 
   describe('emitGameOver', () => {
-    it('should emit game over to both players', () => {
+    it('should emit game over to both players', async () => {
       const mockOpponent: User = mockUser();
       const mockDetails: IValidMove['details'] = mockMoveDetails({});
 
-      service.emitGameOver(mockClient, mockDetails, mockOpponent);
+      await service.emitGameOver(
+        mockClient,
+        mockDetails,
+        mockOpponent,
+        'gameId123',
+      );
 
       const toSpy = jest.spyOn(mockClient, 'to');
       const emitSpy = jest.spyOn(mockClient, 'emit');
@@ -108,13 +119,11 @@ describe('GameEventService', () => {
   });
 
   describe('emitLeave', () => {
-    it('should emit game over with resign status to winner', () => {
-      const mockWinner: User = {
-        currentSocketId: 'winner123',
-      } as User;
+    it('should emit game over with resign status to winner', async () => {
+      const mockWinner = mockUser('winner123');
       const toSpy = jest.spyOn(mockClient, 'to');
       const emitSpy = jest.spyOn(mockClient, 'emit');
-      service.emitLeave(mockClient, mockWinner);
+      await service.emitLeave(mockClient, mockWinner, 'gameId123');
 
       expect(toSpy).toHaveBeenCalledWith(mockWinner.currentSocketId);
       expect(emitSpy).toHaveBeenCalledWith(

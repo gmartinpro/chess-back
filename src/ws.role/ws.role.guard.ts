@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { WsException } from '@nestjs/websockets';
-import { KeycloakService } from '../keycloak/keycloak.service';
+import { KeycloakService } from '../keycloak/service/keycloak.service';
 import { Token } from 'keycloak-connect';
 
 export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
@@ -18,6 +18,10 @@ export class WsRoleGuard implements CanActivate {
     private readonly keycloakService: KeycloakService,
   ) {}
 
+  /**
+   * Checks if the user has the required roles to access the route.
+   * @param context
+   */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const client = context.switchToWs().getClient();
     const token: Token = client.handshake.auth.token;

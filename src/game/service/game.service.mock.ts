@@ -1,15 +1,15 @@
-import { Game, GameDocument } from '../schemas/game.schema';
+import { Game, GameDocument } from '../../schemas/game.schema';
 import {
   IMove,
   IMoveDetails,
   IValidMove,
-} from '../shared/interfaces/engine.interface';
+} from '../../shared/interfaces/engine.interface';
 import {
   LOSER_EMAIL,
   mockUser,
   usersMock,
   WINNER_EMAIL,
-} from '../user/user.service.mock';
+} from '../../user/service/user.service.mock';
 import { GameService } from './game.service';
 
 export const GameServiceMock = {

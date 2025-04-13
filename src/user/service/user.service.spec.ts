@@ -2,7 +2,7 @@ import { createMock } from '@golevelup/ts-jest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
 import { getModelToken } from '@nestjs/mongoose';
-import { UserDocument } from '../schemas/user.schema';
+import { UserDocument } from '../../schemas/user.schema';
 import { Model, Query } from 'mongoose';
 import { NotFoundException } from '@nestjs/common';
 import {

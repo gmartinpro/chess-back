@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameService } from './game.service';
 import { getModelToken } from '@nestjs/mongoose';
-import { GameDocument } from '../schemas/game.schema';
+import { GameDocument } from '../../schemas/game.schema';
 import { Model, Query } from 'mongoose';
 import {
   LOSER_EMAIL,
@@ -9,16 +9,16 @@ import {
   UserServiceMock,
   usersMock,
   WINNER_EMAIL,
-} from '../user/user.service.mock';
-import { EngineServiceMock } from '../engine/engine.service.mock';
-import { EngineService } from '../engine/engine.service';
+} from '../../user/service/user.service.mock';
+import { EngineServiceMock } from '../../engine/service/engine.service.mock';
+import { EngineService } from '../../engine/service/engine.service';
 import { createMock } from '@golevelup/ts-jest';
 import {
   GameNotFoundException,
   IllegalMoveException,
-} from '../exceptions/game.exception';
+} from '../exception/game.exception';
 import { NotFoundException } from '@nestjs/common';
-import { UserService } from '../user/user.service';
+import { UserService } from '../../user/service/user.service';
 import {
   mockGame,
   mockGameDoc,
