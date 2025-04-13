@@ -80,9 +80,7 @@ describe('UserService', () => {
     );
 
     await expect(result).rejects.toThrow(
-      new NotFoundException(
-        `Utilisateur avec l'email ${WINNER_EMAIL} non trouvé`,
-      ),
+      new NotFoundException(`User with email ${WINNER_EMAIL} not found`),
     );
   });
 

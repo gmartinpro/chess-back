@@ -16,9 +16,7 @@ export class UserService {
   ): Promise<User> {
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
-      throw new NotFoundException(
-        `Utilisateur avec l'email ${email} non trouvé`,
-      );
+      throw new NotFoundException(`User with email ${email} not found`);
     }
     user.currentSocketId = socketId;
     await user.save();

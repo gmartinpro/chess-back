@@ -23,7 +23,7 @@ export class WsRoleGuard implements CanActivate {
     const token: Token = client.handshake.auth.token;
 
     if (!token) {
-      throw new WsException('Token non fourni');
+      throw new WsException('No token found');
     }
 
     try {
@@ -41,13 +41,13 @@ export class WsRoleGuard implements CanActivate {
       const hasRole = requiredRoles.some((role) => userRoles.includes(role));
 
       if (!hasRole) {
-        throw new WsException('Accès refusé : rôle insuffisant');
+        throw new WsException('Access denied : insufficient permissions');
       }
 
       client.data.user = decodedToken;
       return true;
     } catch (err) {
-      throw new WsException(`Token invalide ou accès refusé ${err}`);
+      throw new WsException(err);
     }
   }
 }

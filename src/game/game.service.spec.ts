@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameService } from './game.service';
 import { getModelToken } from '@nestjs/mongoose';
-import { Game, GameDocument } from '../schemas/game.schema';
+import { GameDocument } from '../schemas/game.schema';
 import { Model, Query } from 'mongoose';
 import {
   LOSER_EMAIL,

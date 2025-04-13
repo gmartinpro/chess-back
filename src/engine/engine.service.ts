@@ -14,27 +14,30 @@ export class EngineService {
   }
 
   makeMove(gameId: string, moveRequest: IMoveRequest): IMove {
-    const chess = this.boards.get(gameId);
-    if (!chess) return { valid: false }; // Erreur
+    try {
+      const chess = this.boards.get(gameId);
+      if (!chess) return { valid: false };
 
-    const result = chess.move(moveRequest);
-    if (!result) return { valid: false }; // Erreur
+      const result = chess.move(moveRequest);
 
-    const status = this.getGameStatus(chess);
+      const status = this.getGameStatus(chess);
 
-    const isGameOver = this.isGameOver(status);
+      const isGameOver = this.isGameOver(status);
 
-    return {
-      valid: true,
-      details: {
-        from: result.from,
-        to: result.to,
-        san: result.san,
-        fen: chess.fen(),
-        status,
-        isGameOver,
-      },
-    };
+      return {
+        valid: true,
+        details: {
+          from: result.from,
+          to: result.to,
+          san: result.san,
+          fen: chess.fen(),
+          status,
+          isGameOver,
+        },
+      };
+    } catch {
+      return { valid: false };
+    }
   }
 
   undoMove(gameId: string) {

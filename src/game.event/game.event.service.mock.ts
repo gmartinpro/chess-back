@@ -7,5 +7,7 @@ export const GameEventServiceMock = {
     emitGameJoined: jest.fn(),
     emitGameOver: jest.fn(),
     emitLeave: jest.fn(),
+    emitError: jest.fn(),
+    emitMoveMade: jest.fn(),
   },
 };
