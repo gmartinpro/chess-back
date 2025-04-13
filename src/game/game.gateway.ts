@@ -8,7 +8,7 @@ import { GameService } from './game.service';
 import { Socket } from 'socket.io';
 import { SocketMessages } from '../shared/enums/socket.messages.enum';
 import { UserService } from '../user/user.service';
-import { Roles, WsRoleGuard } from '../ws.role/ws.role.middleware';
+import { Roles, WsRoleGuard } from '../ws.role/ws.role.guard';
 import { UseGuards, UseInterceptors } from '@nestjs/common';
 import { GameEventService } from '../game.event/game.event.service';
 import { WsExceptionInterceptor } from '../ws.exception/ws.exception.interceptor';
@@ -40,7 +40,9 @@ export class GameGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() email: string,
   ) {
+    console.log('here');
     const game = await this.gameService.createGame(email, client.id);
+    console.log('here 2');
     this.gameEvent.emitGameCreated(client, game);
   }
 
@@ -62,6 +64,28 @@ export class GameGateway {
       throw new OpponentNotFoundException();
     }
     this.gameEvent.emitGameJoined(client, game, opponentSocketId, gameId);
+  }
+
+  @Roles('Player')
+  @SubscribeMessage(SocketMessages.LEAVE_GAME)
+  async handleLeave(
+    @MessageBody() leaveRequest: { gameId: string; email: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { gameId, email } = leaveRequest;
+    const game = await this.gameService.getGameWithPlayers(gameId);
+
+    if (!game) {
+      throw new GameNotFoundException(gameId);
+    }
+    const opponent = this.userService.getOpponent(game.players, email);
+    const opponentSocketId = opponent?.currentSocketId;
+    if (!opponentSocketId) {
+      return;
+    }
+    game.winner = opponent;
+    await game.save();
+    this.gameEvent.emitLeave(client, opponent);
   }
 
   @Roles('Player')
@@ -87,24 +111,20 @@ export class GameGateway {
       throw new OpponentNotFoundException();
     }
 
-    const madeMove = this.gameService.makeMove(game, move, opponent);
-    if (!madeMove?.move.valid || !madeMove.move.details) {
-      client.emit(SocketMessages.ILLEGAL_MOVE);
-      return;
+    try {
+      const madeMove = this.gameService.makeMove(game, move, opponent, email);
+
+      await game.updateOne(madeMove.game).exec();
+
+      if (madeMove.move.details.isGameOver) {
+        this.gameEvent.emitGameOver(client, madeMove.move.details, opponent);
+        return;
+      }
+
+      this.gameEvent.emitMoveMade(client, madeMove.move, opponent);
+    } catch (err) {
+      this.gameService.undoMove(game);
+      client.emit(SocketMessages.ILLEGAL_MOVE, err);
     }
-
-    await game.updateOne(madeMove.game).exec();
-
-    const isGameOver = this.gameService.isGameOver(
-      madeMove.move.details.status,
-    );
-
-    this.gameEvent.emitMoveMade(
-      client,
-      madeMove.move,
-      opponent,
-      email,
-      isGameOver,
-    );
   }
 }

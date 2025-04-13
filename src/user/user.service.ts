@@ -20,13 +20,15 @@ export class UserService {
         `Utilisateur avec l'email ${email} non trouvé`,
       );
     }
-
     user.currentSocketId = socketId;
     await user.save();
     return user;
   }
 
   getOpponent(players: User[], email: string): User | null {
-    return players.find((player) => player.email !== email) ?? null;
+    if (players.map((player) => player.email).includes(email)) {
+      return players.find((player) => player.email !== email) ?? null;
+    }
+    return null;
   }
 }

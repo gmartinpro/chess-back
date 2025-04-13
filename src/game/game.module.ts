@@ -7,6 +7,7 @@ import { Game, GameSchema } from '../schemas/game.schema';
 import { User, UserSchema } from '../schemas/user.schema';
 import { UserService } from '../user/user.service';
 import { KeycloakService } from '../keycloak/keycloak.service';
+import { GameEventService } from '../game.event/game.event.service';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { KeycloakService } from '../keycloak/keycloak.service';
     EngineService,
     UserService,
     KeycloakService,
+    GameEventService,
   ],
 })
 export class GameModule {}

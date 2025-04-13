@@ -15,7 +15,7 @@ export class WsExceptionInterceptor implements NestInterceptor {
   constructor(private readonly gameEventService: GameEventService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const client = context.switchToWs().getClient<Socket>(); // TODO: Explain
+    const client = context.switchToWs().getClient<Socket>();
 
     return next.handle().pipe(
       catchError((error) => {

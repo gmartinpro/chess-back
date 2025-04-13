@@ -10,4 +10,5 @@ export enum SocketMessages {
   ERROR = 'error',
   GAME_OVER = 'gameOver',
   GAME_STATE = 'gameState',
+  LEAVE_GAME = 'leaveGame',
 }

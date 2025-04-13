@@ -3,7 +3,7 @@ import { Socket } from 'socket.io';
 import { Game } from '../schemas/game.schema';
 import { SocketMessages } from '../shared/enums/socket.messages.enum';
 import { User } from '../schemas/user.schema';
-import { IMove } from '../shared/interfaces/engine.interface';
+import { IMove, IValidMove } from '../shared/interfaces/engine.interface';
 
 @Injectable()
 export class GameEventService {
@@ -34,28 +34,34 @@ export class GameEventService {
     client.emit(SocketMessages.ERROR, msg);
   }
 
-  emitMoveMade(
-    client: Socket,
-    move: IMove,
-    opponent: User,
-    email: string,
-    isGameOver: boolean,
-  ) {
-    client
-      .to(opponent.currentSocketId)
-      .emit(isGameOver ? SocketMessages.GAME_OVER : SocketMessages.MOVE_MADE, {
-        ...move.details,
-        currentPlayer: opponent.currentSocketId,
-        winner: isGameOver ? email : null,
-      });
+  emitMoveMade(client: Socket, move: IMove, opponent: User) {
+    client.to(opponent.currentSocketId).emit(SocketMessages.MOVE_MADE, {
+      ...move.details,
+      currentPlayer: opponent.currentSocketId,
+    });
 
-    client.emit(
-      isGameOver ? SocketMessages.GAME_OVER : SocketMessages.MOVE_MADE,
-      {
-        ...move.details,
-        currentPlayer: opponent.currentSocketId,
-        winner: isGameOver ? email : null,
-      },
-    );
+    client.emit(SocketMessages.MOVE_MADE, {
+      ...move.details,
+      currentPlayer: opponent.currentSocketId,
+    });
+  }
+
+  emitGameOver(client: Socket, details: IValidMove['details'], opponent: User) {
+    client.to(opponent.currentSocketId).emit(SocketMessages.GAME_OVER, {
+      ...details,
+      currentPlayer: opponent.currentSocketId,
+    });
+
+    client.emit(SocketMessages.GAME_OVER, {
+      ...details,
+      currentPlayer: opponent.currentSocketId,
+    });
+  }
+
+  emitLeave(client: Socket, winner: User) {
+    client.to(winner.currentSocketId).emit(SocketMessages.GAME_OVER, {
+      winner,
+      status: 'resign',
+    });
   }
 }

@@ -1,8 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 export class GameNotFoundException extends NotFoundException {
-  constructor(gameId: string) {
-    super(`Game with id ${gameId} not found`);
+  constructor(gameId?: string) {
+    super(gameId ? `Game with id ${gameId} not found` : 'Game not found');
   }
 }
 

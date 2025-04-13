@@ -21,6 +21,9 @@ export class EngineService {
     if (!result) return { valid: false }; // Erreur
 
     const status = this.getGameStatus(chess);
+
+    const isGameOver = this.isGameOver(status);
+
     return {
       valid: true,
       details: {
@@ -29,11 +32,12 @@ export class EngineService {
         san: result.san,
         fen: chess.fen(),
         status,
+        isGameOver,
       },
     };
   }
 
-  undoIllegalMove(gameId: string) {
+  undoMove(gameId: string) {
     const chess = this.boards.get(gameId);
     if (chess) {
       chess.undo();
@@ -45,5 +49,9 @@ export class EngineService {
     if (chess.isStalemate()) return 'stalemate';
     if (chess.isDraw()) return 'draw';
     return 'playing';
+  }
+
+  private isGameOver(status: GameStatus): boolean {
+    return ['stalemate', 'draw', 'checkmate'].includes(status);
   }
 }

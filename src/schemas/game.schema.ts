@@ -24,6 +24,9 @@ export class Game {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
   currentPlayer: User;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
+  winner: User;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);

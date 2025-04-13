@@ -6,7 +6,6 @@ import { GameModule } from './game/game.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
 import { KeycloakService } from './keycloak/keycloak.service';
-import { GameEventService } from './game.event/game.event.service';
 
 @Module({
   imports: [
@@ -31,6 +30,6 @@ import { GameEventService } from './game.event/game.event.service';
     UserModule,
   ],
   controllers: [AppController],
-  providers: [AppService, KeycloakService, GameEventService],
+  providers: [AppService, KeycloakService],
 })
 export class AppModule {}
