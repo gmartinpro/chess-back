@@ -9,8 +9,15 @@ import { Socket } from 'socket.io';
 import { SocketMessages } from '../shared/enums/socket.messages.enum';
 import { UserService } from '../user/user.service';
 import { Roles, WsRoleGuard } from '../ws.role/ws.role.middleware';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, UseInterceptors } from '@nestjs/common';
+import { GameEventService } from '../game.event/game.event.service';
+import { WsExceptionInterceptor } from '../ws.exception/ws.exception.interceptor';
+import {
+  GameNotFoundException,
+  OpponentNotFoundException,
+} from '../exceptions/game.exception';
 
+@UseInterceptors(WsExceptionInterceptor)
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL,
@@ -23,6 +30,7 @@ export class GameGateway {
   constructor(
     private readonly gameService: GameService,
     private readonly userService: UserService,
+    private readonly gameEvent: GameEventService,
   ) {}
 
   @UseGuards(WsRoleGuard)
@@ -33,8 +41,7 @@ export class GameGateway {
     @MessageBody() email: string,
   ) {
     const game = await this.gameService.createGame(email, client.id);
-    client.join(game.id);
-    client.emit(SocketMessages.GAME_CREATED, game);
+    this.gameEvent.emitGameCreated(client, game);
   }
 
   @Roles('Player')
@@ -44,21 +51,17 @@ export class GameGateway {
     @ConnectedSocket() client: Socket,
   ) {
     const { gameId, email } = joinRequest;
-    const game = await this.gameService.joinGame(gameId, email, client.id);
-    if (game) {
-      client.join(gameId);
-      client.emit(SocketMessages.PLAYER_JOINED, { gameId, status: 'playing' });
-      const opponent = this.userService.getOpponent(game.players, email);
-      const opponentSocketId = opponent?.currentSocketId;
 
-      if (opponentSocketId) {
-        client
-          .to(opponentSocketId)
-          .emit(SocketMessages.GAME_STARTED, { ...game, status: 'playing' });
-      }
-    } else {
-      client.emit(SocketMessages.ERROR, 'Game not found');
+    const game = await this.gameService.joinGame(gameId, email, client.id);
+    if (!game) {
+      throw new GameNotFoundException(gameId);
     }
+    const opponent = this.userService.getOpponent(game.players, email);
+    const opponentSocketId = opponent?.currentSocketId;
+    if (!opponentSocketId) {
+      throw new OpponentNotFoundException();
+    }
+    this.gameEvent.emitGameJoined(client, game, opponentSocketId, gameId);
   }
 
   @Roles('Player')
@@ -73,57 +76,35 @@ export class GameGateway {
     @ConnectedSocket() client: Socket,
   ) {
     const { email, gameId, move } = moveRequest;
+
     const game = await this.gameService.getGameWithPlayers(gameId);
-
     if (!game) {
-      client.emit(SocketMessages.ERROR, `Game with id ${gameId} not found`);
-      return;
+      throw new GameNotFoundException(gameId);
     }
-    const opponent = this.userService.getOpponent(game.players, email);
 
+    const opponent = this.userService.getOpponent(game.players, email);
     if (!opponent) {
-      client.emit(SocketMessages.ERROR, `Opponent not found`);
-      return;
+      throw new OpponentNotFoundException();
     }
 
     const madeMove = this.gameService.makeMove(game, move, opponent);
-
     if (!madeMove?.move.valid || !madeMove.move.details) {
       client.emit(SocketMessages.ILLEGAL_MOVE);
       return;
     }
 
     await game.updateOne(madeMove.game).exec();
-    // Test for illegal move
-    // if (move.from === 'd2') {
-    //   this.gameService.undoIllegalMove(gameId);
-    //   client.emit(SocketMessages.ILLEGAL_MOVE);
-    //   return;
-    // }
 
-    const isGameOver = ['stalemate', 'draw', 'checkmate'].includes(
+    const isGameOver = this.gameService.isGameOver(
       madeMove.move.details.status,
     );
-    if (opponent) {
-      client
-        .to(opponent.currentSocketId)
-        .emit(
-          isGameOver ? SocketMessages.GAME_OVER : SocketMessages.MOVE_MADE,
-          {
-            ...madeMove.move.details,
-            currentPlayer: opponent.currentSocketId,
-            winner: isGameOver ? email : null,
-          },
-        );
-    }
 
-    client.emit(
-      isGameOver ? SocketMessages.GAME_OVER : SocketMessages.MOVE_MADE,
-      {
-        ...madeMove.move.details,
-        currentPlayer: opponent.currentSocketId,
-        winner: isGameOver ? email : null,
-      },
+    this.gameEvent.emitMoveMade(
+      client,
+      madeMove.move,
+      opponent,
+      email,
+      isGameOver,
     );
   }
 }

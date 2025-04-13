@@ -7,6 +7,7 @@ import { Game, GameDocument } from '../schemas/game.schema';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
 import { UserService } from '../user/user.service';
+import { GameStatus } from '../shared/types/game.types';
 
 @Injectable()
 export class GameService {
@@ -97,5 +98,9 @@ export class GameService {
 
   private canJoinGame(game: GameDocument): boolean {
     return game.players.length < 2 && game.status === 'pending';
+  }
+
+  isGameOver(status: GameStatus): boolean {
+    return ['stalemate', 'draw', 'checkmate'].includes(status);
   }
 }
