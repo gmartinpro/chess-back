@@ -8,7 +8,7 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
-  app.useWebSocketAdapter(new IoAdapter(app)); // TODO: explain
+  app.useWebSocketAdapter(new IoAdapter(app));
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
   Logger.log(`🚀 Server running on port ${process.env.PORT ?? 3000}`);
 }
